@@ -6,7 +6,7 @@ compatibility_date = "2024-12-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "brett-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "a75bbbf4-ee65-42ba-aa83-2f945dc35464"
 
 # ─── R2 Image Storage ─────────────────────────
 [[r2_buckets]]
