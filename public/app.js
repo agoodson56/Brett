@@ -208,6 +208,8 @@ async function handleAddPart(event) {
     event.preventDefault();
 
     let partNumber = document.getElementById('addPartNumber').value.trim();
+    const model = document.getElementById('addModel').value.trim();
+    const manufacturer = document.getElementById('addManufacturer').value.trim();
     const quantity = document.getElementById('addQuantity').value || 0;
     const location = document.getElementById('addLocation').value.trim();
     const fileInput = document.getElementById('fileInput');
@@ -225,6 +227,8 @@ async function handleAddPart(event) {
 
     const formData = new FormData();
     formData.append('part_number', partNumber);
+    formData.append('model', model || document.getElementById('addModel').value.trim());
+    formData.append('manufacturer', manufacturer || document.getElementById('addManufacturer').value.trim());
     formData.append('quantity', quantity);
     formData.append('location', location);
 
@@ -361,14 +365,16 @@ async function scanPartNumber() {
         if (!res.ok) throw new Error(data.error || 'Scan failed');
 
         if (data.found) {
-            document.getElementById('addPartNumber').value = data.part_number;
-            scanStatus.textContent = `✅ Detected: ${data.part_number}`;
+            if (data.part_number) document.getElementById('addPartNumber').value = data.part_number;
+            if (data.model) document.getElementById('addModel').value = data.model;
+            if (data.manufacturer) document.getElementById('addManufacturer').value = data.manufacturer;
+            scanStatus.textContent = `✅ ${data.message}`;
             scanStatus.style.color = 'var(--success)';
-            showToast(`🔍 Part number detected: ${data.part_number}`, 'success');
+            showToast(`🔍 ${data.message}`, 'success');
         } else {
-            scanStatus.textContent = '⚠️ No part number found — please type it manually';
+            scanStatus.textContent = '⚠️ No part info found — please type it manually';
             scanStatus.style.color = 'var(--warning)';
-            showToast('No part number detected in image. Enter it manually.', 'warning');
+            showToast('No part info detected in image. Enter it manually.', 'warning');
         }
     } catch (err) {
         scanStatus.textContent = `❌ ${err.message}`;
@@ -376,7 +382,7 @@ async function scanPartNumber() {
         showToast(`❌ ${err.message}`, 'error');
     } finally {
         scanBtn.disabled = false;
-        scanBtn.textContent = '🔍 Scan Part Number from Photo';
+        scanBtn.textContent = '🔍 Scan Part Info from Photo';
     }
 }
 

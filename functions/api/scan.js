@@ -1,4 +1,4 @@
-// POST /api/scan — Extract part number from uploaded photo using Gemini AI
+// POST /api/scan — Extract part number, model, and manufacturer from photo using Gemini AI
 export async function onRequestPost(context) {
     try {
         const formData = await context.request.formData();
@@ -17,7 +17,7 @@ export async function onRequestPost(context) {
         }
         const imageBase64 = btoa(binary);
 
-        // Call Gemini to extract part number
+        // Call Gemini to extract part info
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${context.env.GEMINI_API_KEY}`,
             {
@@ -33,18 +33,21 @@ export async function onRequestPost(context) {
                                 }
                             },
                             {
-                                text: `You are a warehouse parts identification expert. Analyze this image carefully and extract the part number.
+                                text: `You are a warehouse parts identification expert. Analyze this image carefully and extract ALL identifying information.
 
 Look for:
-- Printed or stamped part numbers on the component
-- Labels, stickers, or tags showing a part/model number
-- Embossed or engraved identification numbers
-- Barcodes with visible numbers underneath
-- Any manufacturer part number, SKU, or catalog number visible
+- Part numbers (printed, stamped, engraved, on labels/stickers/barcodes)
+- Model numbers (often preceded by "MODEL", "MOD", "M/N", or "MDL")
+- Manufacturer/brand name (logos, company names, brand labels)
 
-If you find a part number, respond with ONLY the part number text (no labels, no explanation, no quotes). 
-If you find multiple part numbers, return the most prominent/primary one.
-If no part number is visible, respond with exactly: NO_PART_NUMBER_FOUND`
+Respond in EXACTLY this JSON format with no other text:
+{"part_number": "EXTRACTED_VALUE_OR_EMPTY", "model": "EXTRACTED_VALUE_OR_EMPTY", "manufacturer": "EXTRACTED_VALUE_OR_EMPTY"}
+
+Rules:
+- If a value is clearly visible, include it exactly as shown
+- If a value is not visible, use an empty string ""
+- Do NOT guess or fabricate values
+- Return ONLY the JSON, no markdown, no code blocks, no explanation`
                             }
                         ]
                     }]
@@ -58,19 +61,41 @@ If no part number is visible, respond with exactly: NO_PART_NUMBER_FOUND`
             return Response.json({ error: 'AI analysis failed: ' + data.error.message }, { status: 500 });
         }
 
-        const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 
-        if (!extractedText || extractedText === 'NO_PART_NUMBER_FOUND') {
+        // Parse JSON response from Gemini
+        let extracted = { part_number: '', model: '', manufacturer: '' };
+        try {
+            // Strip markdown code fences if present
+            const cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            extracted = JSON.parse(cleaned);
+        } catch {
+            // Fallback: treat entire response as part number
+            if (rawText && rawText !== 'NO_PART_NUMBER_FOUND') {
+                extracted.part_number = rawText;
+            }
+        }
+
+        const found = !!(extracted.part_number || extracted.model || extracted.manufacturer);
+
+        if (!found) {
             return Response.json({
                 found: false,
-                message: 'No part number detected in image. Please enter it manually.'
+                message: 'No identifying information detected in image. Please enter details manually.'
             });
         }
 
+        const detectedParts = [];
+        if (extracted.part_number) detectedParts.push(`Part#: ${extracted.part_number}`);
+        if (extracted.model) detectedParts.push(`Model: ${extracted.model}`);
+        if (extracted.manufacturer) detectedParts.push(`Mfr: ${extracted.manufacturer}`);
+
         return Response.json({
             found: true,
-            part_number: extractedText,
-            message: `Detected part number: ${extractedText}`
+            part_number: extracted.part_number || '',
+            model: extracted.model || '',
+            manufacturer: extracted.manufacturer || '',
+            message: `Detected: ${detectedParts.join(' | ')}`
         });
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });

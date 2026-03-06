@@ -1,5 +1,5 @@
 // ─── Gemini AI Description Generator ─────────────────────────
-async function generateDescription(apiKey, partNumber, imageBase64, imageMimeType) {
+async function generateDescription(apiKey, partNumber, model, manufacturer, imageBase64, imageMimeType) {
     try {
         const parts = [];
 
@@ -9,15 +9,21 @@ async function generateDescription(apiKey, partNumber, imageBase64, imageMimeTyp
             });
         }
 
-        parts.push({
-            text: `You are a warehouse parts identification expert. Analyze this part with part number: "${partNumber}".
+        let context = `Part Number: "${partNumber}"`;
+        if (model) context += `\nModel: "${model}"`;
+        if (manufacturer) context += `\nManufacturer: "${manufacturer}"`;
 
-Provide a concise, professional technical description of this part (2-3 sentences max). Include:
+        parts.push({
+            text: `You are a warehouse parts identification expert. Analyze this part with the following information:
+${context}
+
+Provide a concise, professional technical description (2-3 sentences max). Include:
 - What the part is (common name and type)
+- The manufacturer/brand if known
 - Its typical use or application
 - Any notable specifications you can determine
 
-If you can identify the manufacturer or brand from the part number format, mention it. Be specific and practical — this description will be used by warehouse workers to identify parts.
+Be specific and practical — this description will be used by warehouse workers to identify parts.
 
 Respond with ONLY the description text, no labels or formatting.`
         });
@@ -66,8 +72,8 @@ export async function onRequestGet(context) {
         const bindings = [];
 
         if (search) {
-            query += " AND (part_number LIKE ?1 OR description LIKE ?2)";
-            bindings.push(`%${search}%`, `%${search}%`);
+            query += " AND (part_number LIKE ?1 OR description LIKE ?2 OR model LIKE ?3 OR manufacturer LIKE ?4)";
+            bindings.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
         }
         if (location) {
             query += ` AND location LIKE ?${bindings.length + 1}`;
@@ -93,6 +99,8 @@ export async function onRequestPost(context) {
     try {
         const formData = await context.request.formData();
         const part_number = formData.get('part_number');
+        const model = formData.get('model') || '';
+        const manufacturer = formData.get('manufacturer') || '';
         const quantity = parseInt(formData.get('quantity')) || 0;
         const location = formData.get('location') || '';
         const imageFile = formData.get('image');
@@ -137,14 +145,16 @@ export async function onRequestPost(context) {
         const description = await generateDescription(
             context.env.GEMINI_API_KEY,
             part_number,
+            model,
+            manufacturer,
             imageBase64,
             imageMimeType
         );
 
         // Insert into D1
         const result = await db.prepare(
-            `INSERT INTO parts (part_number, description, quantity, location, image_key) VALUES (?, ?, ?, ?, ?)`
-        ).bind(part_number.trim(), description, quantity, location.trim(), imageKey).run();
+            `INSERT INTO parts (part_number, description, quantity, location, image_key, model, manufacturer) VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).bind(part_number.trim(), description, quantity, location.trim(), imageKey, model.trim(), manufacturer.trim()).run();
 
         const newId = result.meta?.last_row_id;
 

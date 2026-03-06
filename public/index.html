@@ -170,7 +170,7 @@
                             <div class="form-group full-width" id="scanBtnContainer" style="display:none;">
                                 <button type="button" class="btn btn-primary" onclick="scanPartNumber()" id="scanBtn"
                                     style="width:100%;padding:14px;font-size:1rem;">
-                                    🔍 Scan Part Number from Photo
+                                    🔍 Scan Part Info from Photo
                                 </button>
                                 <div id="scanStatus"
                                     style="text-align:center;margin-top:8px;font-size:0.85rem;color:var(--text-muted);">
@@ -179,9 +179,21 @@
 
                             <!-- Part Number (auto-filled from scan or manual) -->
                             <div class="form-group">
-                                <label class="form-label">🔢 Step 2: Part Number *</label>
+                                <label class="form-label">🔢 Part Number *</label>
                                 <input type="text" class="form-input" id="addPartNumber"
                                     placeholder="Auto-detected from photo or type manually">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">📋 Model</label>
+                                <input type="text" class="form-input" id="addModel"
+                                    placeholder="Auto-detected or type manually">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">🏭 Manufacturer</label>
+                                <input type="text" class="form-input" id="addManufacturer"
+                                    placeholder="Auto-detected or type manually">
                             </div>
 
                             <div class="form-group">
