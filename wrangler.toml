@@ -1,0 +1,14 @@
+name = "brett"
+compatibility_date = "2024-12-01"
+
+# ─── D1 Database ───────────────────────────────
+# After creating your D1 database, replace the database_id below
+[[d1_databases]]
+binding = "DB"
+database_name = "brett-db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# ─── R2 Image Storage ─────────────────────────
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "brett-images"

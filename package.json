@@ -1,0 +1,9 @@
+{
+  "name": "brett",
+  "version": "2.0.0",
+  "description": "Brett - Warehouse Parts Inventory System (Cloudflare)",
+  "scripts": {
+    "dev": "npx wrangler pages dev public --d1=DB --r2=BUCKET --compatibility-date=2024-01-01",
+    "deploy": "npx wrangler pages deploy public"
+  }
+}

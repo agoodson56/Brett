@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRETT — Warehouse Parts Inventory</title>
+    <meta name="description" content="Brett - AI-powered warehouse parts inventory management system. Track parts, quantities, and locations with Gemini AI.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>">
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════ -->
+<header class="header">
+    <div class="header-inner">
+        <div class="logo">
+            <div class="logo-icon">🔧</div>
+            <div>
+                <div class="logo-text">BRETT</div>
+                <div class="logo-sub">Warehouse Inventory System</div>
+            </div>
+        </div>
+
+        <div class="header-search">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="globalSearch" placeholder="Search parts, locations, descriptions..." oninput="handleSearch(this.value)">
+        </div>
+
+        <div class="header-actions">
+            <button class="btn btn-primary" onclick="showTab('add')">
+                ＋ Add Part
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- ═══ MAIN CONTENT ═════════════════════════════════════════ -->
+<main class="main">
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+        <button class="nav-tab active" data-tab="dashboard" onclick="showTab('dashboard')">
+            📊 Dashboard
+        </button>
+        <button class="nav-tab" data-tab="inventory" onclick="showTab('inventory')">
+            📦 Inventory <span class="tab-badge" id="inventoryCount">0</span>
+        </button>
+        <button class="nav-tab" data-tab="add" onclick="showTab('add')">
+            ➕ Add Part
+        </button>
+        <button class="nav-tab" data-tab="activity" onclick="showTab('activity')">
+            📋 Activity Log
+        </button>
+    </nav>
+
+    <!-- ─── DASHBOARD TAB ────────────────────────────────── -->
+    <section id="tab-dashboard">
+        <div class="stats-grid">
+            <div class="stat-card blue">
+                <div class="stat-label">Total Parts</div>
+                <div class="stat-value" id="statTotalParts">0</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">Total In Stock</div>
+                <div class="stat-value" id="statTotalQty">0</div>
+            </div>
+            <div class="stat-card amber">
+                <div class="stat-label">Low Stock</div>
+                <div class="stat-value" id="statLowStock">0</div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-label">Out of Stock</div>
+                <div class="stat-value" id="statOutOfStock">0</div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">📋 Recent Activity</div>
+            </div>
+            <div class="panel-body">
+                <div id="dashboardActivity" class="transaction-list">
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <h3>No activity yet</h3>
+                        <p>Start by adding parts to your inventory</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── INVENTORY TAB ────────────────────────────────── -->
+    <section id="tab-inventory" class="hidden">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">📦 Parts Inventory</div>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <select class="form-select" id="locationFilter" onchange="loadParts()" style="padding:8px 12px;font-size:0.82rem;">
+                        <option value="">All Locations</option>
+                    </select>
+                </div>
+            </div>
+            <div class="panel-body" style="padding:0;">
+                <div class="parts-table-wrap">
+                    <table class="parts-table">
+                        <thead>
+                            <tr>
+                                <th>Photo</th>
+                                <th onclick="sortParts('part_number')">Part # ↕</th>
+                                <th>Description</th>
+                                <th onclick="sortParts('quantity')">QTY ↕</th>
+                                <th onclick="sortParts('location')">Location ↕</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="partsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div id="emptyInventory" class="empty-state hidden">
+                    <div class="empty-icon">📦</div>
+                    <h3>No parts in inventory</h3>
+                    <p>Add your first part to get started</p>
+                    <button class="btn btn-primary mt-2" onclick="showTab('add')">＋ Add First Part</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── ADD PART TAB ─────────────────────────────────── -->
+    <section id="tab-add" class="hidden">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">➕ Add New Part</div>
+            </div>
+            <div class="panel-body" style="position:relative;">
+                <div id="addPartLoading" class="loading-overlay hidden">
+                    <div class="spinner"></div>
+                    <div class="loading-text">🤖 Gemini AI is analyzing your part...</div>
+                </div>
+
+                <form id="addPartForm" onsubmit="handleAddPart(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Part Number *</label>
+                            <input type="text" class="form-input" id="addPartNumber" placeholder="e.g., HVAC-3042-B" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Initial Quantity</label>
+                            <input type="number" class="form-input" id="addQuantity" placeholder="0" min="0" value="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Warehouse Location</label>
+                            <input type="text" class="form-input" id="addLocation" placeholder="e.g., Aisle 3, Shelf B, Bin 12">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Or select existing location</label>
+                            <select class="form-select" id="addLocationSelect" onchange="if(this.value) document.getElementById('addLocation').value = this.value">
+                                <option value="">— Type new or select —</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Part Photo</label>
+                            <div class="upload-zone" id="uploadZone" 
+                                onclick="document.getElementById('fileInput').click()"
+                                ondragover="event.preventDefault(); this.classList.add('dragover')"
+                                ondragleave="this.classList.remove('dragover')"
+                                ondrop="handleDrop(event)">
+                                <div class="upload-icon">📸</div>
+                                <div class="upload-text">
+                                    <strong>Click to upload</strong> or drag and drop<br>
+                                    JPG, PNG, WebP up to 10MB
+                                </div>
+                            </div>
+                            <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)" style="display:none">
+                        </div>
+
+                        <div class="form-group full-width" style="flex-direction:row; justify-content:flex-end; gap:12px; margin-top:0.5rem;">
+                            <button type="button" class="btn btn-ghost" onclick="resetAddForm()">Clear</button>
+                            <button type="submit" class="btn btn-success" id="addSubmitBtn">
+                                🤖 Add Part & Generate Description
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── ACTIVITY LOG TAB ─────────────────────────────── -->
+    <section id="tab-activity" class="hidden">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">📋 Full Activity Log</div>
+            </div>
+            <div class="panel-body">
+                <div id="fullActivityLog" class="transaction-list" style="max-height:none;">
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <h3>No activity yet</h3>
+                        <p>Transactions will appear here as you manage inventory</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<!-- ═══ PART DETAIL MODAL ════════════════════════════════════ -->
+<div class="modal-overlay" id="partDetailModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title" id="modalPartTitle">Part Detail</div>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="detail-grid">
+                <div>
+                    <div id="modalImageContainer"></div>
+                </div>
+                <div class="detail-info">
+                    <div class="detail-part-number" id="modalPartNumber"></div>
+                    <div class="detail-description" id="modalDescription"></div>
+                    <div class="detail-meta">
+                        <div class="meta-item">
+                            <div class="meta-label">Quantity</div>
+                            <div class="meta-value" id="modalQuantity">0</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Location</div>
+                            <div class="meta-value" id="modalLocation">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Take / Add Controls -->
+            <div style="margin-top:1.5rem; padding-top:1.5rem; border-top: 1px solid var(--glass-border);">
+                <div class="panel-title" style="margin-bottom:12px;">📦 Manage Stock</div>
+                <div class="qty-controls">
+                    <div class="qty-input-group">
+                        <button onclick="adjustModalQty(-1)">−</button>
+                        <input type="number" id="modalQtyInput" value="1" min="1">
+                        <button onclick="adjustModalQty(1)">+</button>
+                    </div>
+                    <button class="btn btn-danger" onclick="takeParts()">
+                        📤 Take Parts
+                    </button>
+                    <button class="btn btn-success" onclick="addStock()">
+                        📥 Add Stock
+                    </button>
+                </div>
+            </div>
+
+            <!-- Transaction History -->
+            <div style="margin-top:1.5rem; padding-top:1.5rem; border-top: 1px solid var(--glass-border);">
+                <div class="panel-title" style="margin-bottom:12px;">📜 History</div>
+                <div id="modalTransactions" class="transaction-list"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost btn-sm" onclick="editPart()">✏️ Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deletePart()">🗑️ Delete</button>
+            <button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ EDIT PART MODAL ══════════════════════════════════════ -->
+<div class="modal-overlay" id="editPartModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">✏️ Edit Part</div>
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="position:relative;">
+            <div id="editPartLoading" class="loading-overlay hidden">
+                <div class="spinner"></div>
+                <div class="loading-text">Updating part...</div>
+            </div>
+            <form id="editPartForm" onsubmit="handleEditPart(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Part Number</label>
+                        <input type="text" class="form-input" id="editPartNumber" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" class="form-input" id="editQuantity" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Location</label>
+                        <input type="text" class="form-input" id="editLocation">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Regenerate Description?</label>
+                        <select class="form-select" id="editRegenerate">
+                            <option value="false">Keep current description</option>
+                            <option value="true">🤖 Regenerate with AI</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-input" id="editDescription" rows="3" style="resize:vertical;"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label class="form-label">Replace Photo</label>
+                        <input type="file" class="form-input" id="editFileInput" accept="image/*" style="padding:8px;">
+                    </div>
+                    <div class="form-group full-width" style="flex-direction:row; justify-content:flex-end; gap:12px;">
+                        <button type="button" class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ TOAST CONTAINER ══════════════════════════════════════ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
