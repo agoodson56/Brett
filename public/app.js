@@ -265,6 +265,8 @@ function resetAddForm() {
             JPG, PNG, WebP up to 10MB
         </div>
     `;
+    document.getElementById('scanBtnContainer').style.display = 'none';
+    document.getElementById('scanStatus').textContent = '';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -298,6 +300,9 @@ function previewImage(file) {
             <img src="${e.target.result}" class="upload-preview" alt="Preview">
             <button type="button" class="upload-remove" onclick="event.stopPropagation(); removeUpload()">✕</button>
         `;
+        // Show the scan button
+        document.getElementById('scanBtnContainer').style.display = 'block';
+        document.getElementById('scanStatus').textContent = '';
     };
     reader.readAsDataURL(file);
 }
@@ -313,6 +318,59 @@ function removeUpload() {
             JPG, PNG, WebP up to 10MB
         </div>
     `;
+    document.getElementById('scanBtnContainer').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SCAN PART NUMBER FROM PHOTO
+// ═══════════════════════════════════════════════════════════════
+
+async function scanPartNumber() {
+    const fileInput = document.getElementById('fileInput');
+    if (!fileInput.files[0]) {
+        showToast('Upload a photo first', 'error');
+        return;
+    }
+
+    const scanBtn = document.getElementById('scanBtn');
+    const scanStatus = document.getElementById('scanStatus');
+
+    scanBtn.disabled = true;
+    scanBtn.textContent = '🔍 Scanning...';
+    scanStatus.textContent = '🤖 Gemini AI is reading the part number from the photo...';
+    scanStatus.style.color = 'var(--accent)';
+
+    try {
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+
+        const res = await fetch(`${API}/api/scan`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Scan failed');
+
+        if (data.found) {
+            document.getElementById('addPartNumber').value = data.part_number;
+            scanStatus.textContent = `✅ Detected: ${data.part_number}`;
+            scanStatus.style.color = 'var(--success)';
+            showToast(`🔍 Part number detected: ${data.part_number}`, 'success');
+        } else {
+            scanStatus.textContent = '⚠️ No part number found — please type it manually';
+            scanStatus.style.color = 'var(--warning)';
+            showToast('No part number detected in image. Enter it manually.', 'warning');
+        }
+    } catch (err) {
+        scanStatus.textContent = `❌ ${err.message}`;
+        scanStatus.style.color = 'var(--danger)';
+        showToast(`❌ ${err.message}`, 'error');
+    } finally {
+        scanBtn.disabled = false;
+        scanBtn.textContent = '🔍 Scan Part Number from Photo';
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
