@@ -207,13 +207,19 @@ function renderTransactions(transactions, containerId) {
 async function handleAddPart(event) {
     event.preventDefault();
 
-    const partNumber = document.getElementById('addPartNumber').value.trim();
+    let partNumber = document.getElementById('addPartNumber').value.trim();
     const quantity = document.getElementById('addQuantity').value || 0;
     const location = document.getElementById('addLocation').value.trim();
     const fileInput = document.getElementById('fileInput');
 
+    // If no part number but has photo, auto-scan first
+    if (!partNumber && fileInput.files[0]) {
+        await scanPartNumber();
+        partNumber = document.getElementById('addPartNumber').value.trim();
+    }
+
     if (!partNumber) {
-        showToast('Please enter a part number', 'error');
+        showToast('Please enter a part number or upload a photo with a visible part number', 'error');
         return;
     }
 
@@ -300,9 +306,10 @@ function previewImage(file) {
             <img src="${e.target.result}" class="upload-preview" alt="Preview">
             <button type="button" class="upload-remove" onclick="event.stopPropagation(); removeUpload()">✕</button>
         `;
-        // Show the scan button
+        // Show the scan button and AUTO-SCAN immediately
         document.getElementById('scanBtnContainer').style.display = 'block';
         document.getElementById('scanStatus').textContent = '';
+        scanPartNumber(); // Auto-scan on upload
     };
     reader.readAsDataURL(file);
 }
