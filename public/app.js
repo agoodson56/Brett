@@ -9,12 +9,41 @@ let allParts = [];
 let currentPartId = null;
 let currentSort = { column: 'created_at', order: 'DESC' };
 
+// ─── Mobile Detection ─────────────────────────────────────────
+const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    || (window.innerWidth <= 768);
+
 // ─── Initialize ───────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     loadStats();
     loadParts();
     showTab('dashboard');
+    initMobile();
 });
+
+// ─── Mobile Initialization ────────────────────────────────────
+function initMobile() {
+    // Update upload text for mobile
+    const uploadText = document.getElementById('uploadText');
+    if (isMobile && uploadText) {
+        uploadText.innerHTML = `
+            <strong>Tap to take photo</strong> or choose from gallery<br>
+            JPG, PNG, WebP up to 10MB
+        `;
+    }
+}
+
+// ─── Mobile Search Toggle ─────────────────────────────────────
+function toggleMobileSearch() {
+    const bar = document.getElementById('mobileSearchBar');
+    bar.classList.toggle('active');
+    if (bar.classList.contains('active')) {
+        bar.querySelector('input').focus();
+    } else {
+        bar.querySelector('input').value = '';
+        handleSearch('');
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  NAVIGATION
@@ -268,13 +297,23 @@ function resetAddForm() {
     document.getElementById('addPartForm').reset();
     const zone = document.getElementById('uploadZone');
     zone.classList.remove('has-image');
-    zone.innerHTML = `
-        <div class="upload-icon">📸</div>
-        <div class="upload-text">
-            <strong>Click to upload</strong> or drag and drop<br>
-            JPG, PNG, WebP up to 10MB
-        </div>
-    `;
+    if (isMobile) {
+        zone.innerHTML = `
+            <div class="upload-icon">📸</div>
+            <div class="upload-text" id="uploadText">
+                <strong>Tap to take photo</strong> or choose from gallery<br>
+                JPG, PNG, WebP up to 10MB
+            </div>
+        `;
+    } else {
+        zone.innerHTML = `
+            <div class="upload-icon">📸</div>
+            <div class="upload-text" id="uploadText">
+                <strong>Click to upload</strong> or drag and drop<br>
+                JPG, PNG, WebP up to 10MB
+            </div>
+        `;
+    }
     document.getElementById('scanBtnContainer').style.display = 'none';
     document.getElementById('scanStatus').textContent = '';
 }
@@ -322,13 +361,23 @@ function removeUpload() {
     document.getElementById('fileInput').value = '';
     const zone = document.getElementById('uploadZone');
     zone.classList.remove('has-image');
-    zone.innerHTML = `
-        <div class="upload-icon">📸</div>
-        <div class="upload-text">
-            <strong>Click to upload</strong> or drag and drop<br>
-            JPG, PNG, WebP up to 10MB
-        </div>
-    `;
+    if (isMobile) {
+        zone.innerHTML = `
+            <div class="upload-icon">📸</div>
+            <div class="upload-text" id="uploadText">
+                <strong>Tap to take photo</strong> or choose from gallery<br>
+                JPG, PNG, WebP up to 10MB
+            </div>
+        `;
+    } else {
+        zone.innerHTML = `
+            <div class="upload-icon">📸</div>
+            <div class="upload-text" id="uploadText">
+                <strong>Click to upload</strong> or drag and drop<br>
+                JPG, PNG, WebP up to 10MB
+            </div>
+        `;
+    }
     document.getElementById('scanBtnContainer').style.display = 'none';
 }
 
@@ -499,7 +548,8 @@ async function addStock() {
 }
 
 async function quickTake(id, partNumber, available) {
-    const qty = prompt(`Take how many of ${partNumber}?\n(${available} available)`);
+    // Use modal-style inline input instead of prompt() for mobile compatibility
+    const qty = await showQuickTakeInput(partNumber, available);
     if (qty === null) return;
 
     const amount = parseInt(qty);
@@ -524,6 +574,82 @@ async function quickTake(id, partNumber, available) {
     } catch (err) {
         showToast(`❌ ${err.message}`, 'error');
     }
+}
+
+// Styled inline prompt replacement (works on all mobile browsers)
+function showQuickTakeInput(partNumber, available) {
+    return new Promise(resolve => {
+        // Remove any existing quick-take overlay
+        document.getElementById('quickTakeOverlay')?.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'quickTakeOverlay';
+        overlay.className = 'modal-overlay active';
+        overlay.style.zIndex = '2000';
+        overlay.innerHTML = `
+            <div class="modal" style="max-width:380px;">
+                <div class="modal-header">
+                    <div class="modal-title">📤 Take Parts</div>
+                    <button class="modal-close" id="qtClose">&times;</button>
+                </div>
+                <div class="modal-body" style="text-align:center;">
+                    <p style="margin-bottom:8px;color:var(--text-secondary);">
+                        <strong style="color:var(--accent);">${partNumber}</strong>
+                    </p>
+                    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
+                        ${available} available
+                    </p>
+                    <div class="qty-input-group" style="justify-content:center;margin:0 auto;">
+                        <button id="qtMinus">−</button>
+                        <input type="number" id="qtInput" value="1" min="1" max="${available}" inputmode="numeric">
+                        <button id="qtPlus">+</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-ghost" id="qtCancel">Cancel</button>
+                    <button class="btn btn-danger" id="qtConfirm">📤 Take</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const input = document.getElementById('qtInput');
+        input.focus();
+        input.select();
+
+        document.getElementById('qtMinus').onclick = () => {
+            let v = parseInt(input.value) - 1;
+            if (v < 1) v = 1;
+            input.value = v;
+        };
+        document.getElementById('qtPlus').onclick = () => {
+            let v = parseInt(input.value) + 1;
+            if (v > available) v = available;
+            input.value = v;
+        };
+
+        const close = () => { overlay.remove(); resolve(null); };
+        document.getElementById('qtClose').onclick = close;
+        document.getElementById('qtCancel').onclick = close;
+        overlay.onclick = (e) => { if (e.target === overlay) close(); };
+
+        document.getElementById('qtConfirm').onclick = () => {
+            const val = input.value;
+            overlay.remove();
+            resolve(val);
+        };
+
+        // Enter key to confirm
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = input.value;
+                overlay.remove();
+                resolve(val);
+            }
+            if (e.key === 'Escape') close();
+        });
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -700,6 +826,210 @@ function showToast(message, type = 'info') {
         toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, 5000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MATERIAL REQUEST MATCHING
+// ═══════════════════════════════════════════════════════════════
+
+function handleMatchFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) previewMatchImage(file);
+}
+
+function handleMatchDrop(event) {
+    event.preventDefault();
+    event.target.closest('.upload-zone').classList.remove('dragover');
+    const file = event.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        document.getElementById('matchFileInput').files = dataTransfer.files;
+        previewMatchImage(file);
+    }
+}
+
+function previewMatchImage(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const zone = document.getElementById('matchUploadZone');
+        zone.classList.add('has-image');
+        zone.innerHTML = `
+            <img src="${e.target.result}" class="upload-preview" alt="Form Preview">
+            <button type="button" class="upload-remove" onclick="event.stopPropagation(); resetMatchForm()">✕</button>
+        `;
+        document.getElementById('matchAnalyzeContainer').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+function resetMatchForm() {
+    document.getElementById('matchFileInput').value = '';
+    const zone = document.getElementById('matchUploadZone');
+    zone.classList.remove('has-image');
+    if (isMobile) {
+        zone.innerHTML = `
+            <div class="upload-icon">📄</div>
+            <div class="upload-text" id="matchUploadText">
+                <strong>Tap to photograph form</strong><br>
+                Take a photo of your material request form
+            </div>
+        `;
+    } else {
+        zone.innerHTML = `
+            <div class="upload-icon">📄</div>
+            <div class="upload-text" id="matchUploadText">
+                <strong>Upload material request form</strong><br>
+                Take a photo or upload an image of the form
+            </div>
+        `;
+    }
+    document.getElementById('matchAnalyzeContainer').style.display = 'none';
+    document.getElementById('matchResults').classList.add('hidden');
+}
+
+async function analyzeRequest() {
+    const fileInput = document.getElementById('matchFileInput');
+    if (!fileInput.files[0]) {
+        showToast('Upload a form image first', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('matchAnalyzeBtn');
+    const loading = document.getElementById('matchLoading');
+
+    btn.disabled = true;
+    btn.textContent = '🔍 Analyzing...';
+    loading.classList.remove('hidden');
+
+    try {
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+
+        const res = await fetch(`${API}/api/match`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || 'Analysis failed');
+        }
+
+        renderMatchResults(data);
+        showToast(`📄 ${data.message}`, 'success');
+    } catch (err) {
+        showToast(`❌ ${err.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍 Analyze & Match Parts';
+        loading.classList.add('hidden');
+    }
+}
+
+function renderMatchResults(data) {
+    const resultsContainer = document.getElementById('matchResults');
+    resultsContainer.classList.remove('hidden');
+
+    // Summary
+    const summary = document.getElementById('matchSummary');
+    const matchPct = data.summary.total_requested > 0
+        ? Math.round((data.summary.matched_count / data.summary.total_requested) * 100)
+        : 0;
+
+    summary.innerHTML = `
+        <div class="match-summary-cards">
+            <div class="match-stat">
+                <div class="match-stat-value">${data.summary.total_requested}</div>
+                <div class="match-stat-label">Parts on Form</div>
+            </div>
+            <div class="match-stat success">
+                <div class="match-stat-value">${data.summary.matched_count}</div>
+                <div class="match-stat-label">In Warehouse</div>
+            </div>
+            <div class="match-stat danger">
+                <div class="match-stat-value">${data.summary.unmatched_count}</div>
+                <div class="match-stat-label">Need to Order</div>
+            </div>
+            <div class="match-stat ${matchPct >= 50 ? 'success' : 'danger'}">
+                <div class="match-stat-value">${matchPct}%</div>
+                <div class="match-stat-label">Match Rate</div>
+            </div>
+        </div>
+    `;
+
+    // Matched (in-stock)
+    document.getElementById('matchedCount').textContent = data.matched.length;
+    const matchedBody = document.getElementById('matchedPartsBody');
+
+    if (data.matched.length === 0) {
+        matchedBody.innerHTML = `
+            <div class="empty-state" style="padding:2rem;">
+                <div class="empty-icon">📦</div>
+                <h3>No matching parts found</h3>
+                <p>None of the requested parts are currently in the warehouse</p>
+            </div>
+        `;
+    } else {
+        matchedBody.innerHTML = data.matched.map(part => `
+            <div class="match-item match-item-success">
+                <div class="match-item-header">
+                    <span class="match-part-number">${escapeHtml(part.requested_part)}</span>
+                    ${part.requested_part !== part.warehouse_part_number
+                ? `<span class="match-alias">→ matched: ${escapeHtml(part.warehouse_part_number)}</span>`
+                : ''}
+                </div>
+                <div class="match-item-details">
+                    <div class="match-detail">
+                        <span class="match-detail-label">Available</span>
+                        <span class="match-detail-value qty-badge ${part.qty_available > 5 ? 'healthy' : part.qty_available > 0 ? 'low' : 'out'}">
+                            ${part.qty_available}
+                        </span>
+                    </div>
+                    ${part.qty_requested ? `
+                        <div class="match-detail">
+                            <span class="match-detail-label">Requested</span>
+                            <span class="match-detail-value">${part.qty_requested}</span>
+                        </div>
+                    ` : ''}
+                    <div class="match-detail">
+                        <span class="match-detail-label">Location</span>
+                        <span class="match-detail-value location-badge">📍 ${escapeHtml(part.location || 'N/A')}</span>
+                    </div>
+                </div>
+                ${part.warehouse_description ? `
+                    <div class="match-item-desc">${escapeHtml(part.warehouse_description)}</div>
+                ` : ''}
+            </div>
+        `).join('');
+    }
+
+    // Unmatched (need to order)
+    document.getElementById('unmatchedCount').textContent = data.unmatched.length;
+    const unmatchedBody = document.getElementById('unmatchedPartsBody');
+
+    if (data.unmatched.length === 0) {
+        unmatchedBody.innerHTML = `
+            <div class="empty-state" style="padding:2rem;">
+                <div class="empty-icon">🎉</div>
+                <h3>Everything is in stock!</h3>
+                <p>All requested parts are available in the warehouse</p>
+            </div>
+        `;
+    } else {
+        unmatchedBody.innerHTML = data.unmatched.map(part => `
+            <div class="match-item match-item-danger">
+                <div class="match-item-header">
+                    <span class="match-part-number">${escapeHtml(part.part_number)}</span>
+                    ${part.qty_requested ? `<span class="match-qty-req">Qty: ${part.qty_requested}</span>` : ''}
+                </div>
+                ${part.description ? `
+                    <div class="match-item-desc">${escapeHtml(part.description)}</div>
+                ` : ''}
+            </div>
+        `).join('');
+    }
 }
 
 // Close modals with Escape key

@@ -3,12 +3,17 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0e17">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>BRETT — Warehouse Parts Inventory</title>
     <meta name="description"
         content="Brett - AI-powered warehouse parts inventory management system. Track parts, quantities, and locations with Gemini AI.">
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="logo.png" type="image/png">
+    <link rel="apple-touch-icon" href="logo.png">
 </head>
 
 <body>
@@ -31,10 +36,19 @@
             </div>
 
             <div class="header-actions">
+                <button class="btn btn-icon mobile-search-toggle" onclick="toggleMobileSearch()" aria-label="Search">
+                    🔍
+                </button>
                 <button class="btn btn-primary" onclick="showTab('add')">
                     ＋ Add Part
                 </button>
             </div>
+        </div>
+        <!-- Mobile Search Bar (hidden by default) -->
+        <div class="mobile-search-bar" id="mobileSearchBar">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="mobileSearchInput" placeholder="Search parts..." oninput="handleSearch(this.value)">
+            <button class="btn btn-ghost btn-sm" onclick="toggleMobileSearch()">✕</button>
         </div>
     </header>
 
@@ -54,6 +68,9 @@
             </button>
             <button class="nav-tab" data-tab="activity" onclick="showTab('activity')">
                 📋 Activity Log
+            </button>
+            <button class="nav-tab" data-tab="match" onclick="showTab('match')">
+                📄 Match Request
             </button>
         </nav>
 
@@ -156,13 +173,13 @@
                                     ondragover="event.preventDefault(); this.classList.add('dragover')"
                                     ondragleave="this.classList.remove('dragover')" ondrop="handleDrop(event)">
                                     <div class="upload-icon">📸</div>
-                                    <div class="upload-text">
+                                    <div class="upload-text" id="uploadText">
                                         <strong>Click to upload</strong> or drag and drop<br>
                                         JPG, PNG, WebP up to 10MB
                                     </div>
                                 </div>
-                                <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)"
-                                    style="display:none">
+                                <input type="file" id="fileInput" accept="image/*" capture="environment"
+                                    onchange="handleFileSelect(event)" style="display:none">
                             </div>
 
                             <!-- Scan Button -->
@@ -180,7 +197,8 @@
                             <div class="form-group">
                                 <label class="form-label">🔢 Part Number *</label>
                                 <input type="text" class="form-input" id="addPartNumber"
-                                    placeholder="Auto-detected from photo or type manually">
+                                    placeholder="Auto-detected from photo or type manually" autocapitalize="characters"
+                                    autocomplete="off">
                             </div>
 
                             <div class="form-group">
@@ -198,7 +216,7 @@
                             <div class="form-group">
                                 <label class="form-label">Initial Quantity</label>
                                 <input type="number" class="form-input" id="addQuantity" placeholder="0" min="0"
-                                    value="0">
+                                    value="0" inputmode="numeric">
                             </div>
 
                             <div class="form-group">
@@ -241,6 +259,78 @@
                             <h3>No activity yet</h3>
                             <p>Transactions will appear here as you manage inventory</p>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─── MATCH REQUEST TAB ──────────────────────────────── -->
+        <section id="tab-match" class="hidden">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">📄 Material Request Analyzer</div>
+                </div>
+                <div class="panel-body" style="position:relative;">
+                    <div id="matchLoading" class="loading-overlay hidden">
+                        <div class="spinner"></div>
+                        <div class="loading-text">🤖 Gemini AI is analyzing your form...</div>
+                    </div>
+
+                    <p style="color:var(--text-secondary);margin-bottom:1rem;font-size:0.9rem;">
+                        Upload a photo of your material request form. Gemini AI will extract the part numbers
+                        and check what's already available in the warehouse.
+                    </p>
+
+                    <!-- Upload Zone -->
+                    <div class="upload-zone" id="matchUploadZone"
+                        onclick="document.getElementById('matchFileInput').click()"
+                        ondragover="event.preventDefault(); this.classList.add('dragover')"
+                        ondragleave="this.classList.remove('dragover')" ondrop="handleMatchDrop(event)">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text" id="matchUploadText">
+                            <strong>Upload material request form</strong><br>
+                            Take a photo or upload an image of the form
+                        </div>
+                    </div>
+                    <input type="file" id="matchFileInput" accept="image/*" capture="environment"
+                        onchange="handleMatchFileSelect(event)" style="display:none">
+
+                    <!-- Analyze Button -->
+                    <div id="matchAnalyzeContainer" style="display:none;margin-top:1rem;">
+                        <button type="button" class="btn btn-primary" onclick="analyzeRequest()" id="matchAnalyzeBtn"
+                            style="width:100%;padding:14px;font-size:1rem;">
+                            🔍 Analyze & Match Parts
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="matchResults" class="hidden">
+                <!-- Summary -->
+                <div class="match-summary" id="matchSummary"></div>
+
+                <!-- In Stock -->
+                <div class="panel match-panel-success">
+                    <div class="panel-header">
+                        <div class="panel-title">✅ Available in Warehouse</div>
+                        <span class="tab-badge" id="matchedCount"
+                            style="background:var(--success);color:white;">0</span>
+                    </div>
+                    <div class="panel-body" style="padding:0;">
+                        <div id="matchedPartsBody"></div>
+                    </div>
+                </div>
+
+                <!-- Not In Stock -->
+                <div class="panel match-panel-danger">
+                    <div class="panel-header">
+                        <div class="panel-title">❌ Need to Order</div>
+                        <span class="tab-badge" id="unmatchedCount"
+                            style="background:var(--danger);color:white;">0</span>
+                    </div>
+                    <div class="panel-body" style="padding:0;">
+                        <div id="unmatchedPartsBody"></div>
                     </div>
                 </div>
             </div>
@@ -349,7 +439,7 @@
                         <div class="form-group full-width">
                             <label class="form-label">Replace Photo</label>
                             <input type="file" class="form-input" id="editFileInput" accept="image/*"
-                                style="padding:8px;">
+                                capture="environment" style="padding:8px;">
                         </div>
                         <div class="form-group full-width"
                             style="flex-direction:row; justify-content:flex-end; gap:12px;">
