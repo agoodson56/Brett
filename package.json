@@ -5,5 +5,8 @@
   "scripts": {
     "dev": "npx wrangler pages dev public --d1=DB --r2=BUCKET --compatibility-date=2024-01-01",
     "deploy": "npx wrangler pages deploy public"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
   }
 }

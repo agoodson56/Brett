@@ -834,33 +834,47 @@ function showToast(message, type = 'info') {
 
 function handleMatchFileSelect(event) {
     const file = event.target.files[0];
-    if (file) previewMatchImage(file);
+    if (file) previewMatchFile(file);
 }
 
 function handleMatchDrop(event) {
     event.preventDefault();
     event.target.closest('.upload-zone').classList.remove('dragover');
     const file = event.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file) {
         const dataTransfer = new DataTransfer();
         dataTransfer.items.add(file);
         document.getElementById('matchFileInput').files = dataTransfer.files;
-        previewMatchImage(file);
+        previewMatchFile(file);
     }
 }
 
-function previewMatchImage(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const zone = document.getElementById('matchUploadZone');
-        zone.classList.add('has-image');
+function previewMatchFile(file) {
+    const zone = document.getElementById('matchUploadZone');
+    zone.classList.add('has-image');
+
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            zone.innerHTML = `
+                <img src="${e.target.result}" class="upload-preview" alt="Form Preview">
+                <button type="button" class="upload-remove" onclick="event.stopPropagation(); resetMatchForm()">✕</button>
+            `;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        const ext = file.name.split('.').pop().toUpperCase();
+        const icons = { PDF: '📕', XLSX: '📊', XLS: '📊', CSV: '📊', DOCX: '📝', DOC: '📝' };
         zone.innerHTML = `
-            <img src="${e.target.result}" class="upload-preview" alt="Form Preview">
+            <div style="text-align:center;padding:2rem;">
+                <div style="font-size:3rem;">${icons[ext] || '📄'}</div>
+                <div style="color:var(--accent);font-weight:700;margin:8px 0;">${escapeHtml(file.name)}</div>
+                <div style="color:var(--text-muted);font-size:0.85rem;">${(file.size / 1024).toFixed(0)} KB</div>
+            </div>
             <button type="button" class="upload-remove" onclick="event.stopPropagation(); resetMatchForm()">✕</button>
         `;
-        document.getElementById('matchAnalyzeContainer').style.display = 'block';
-    };
-    reader.readAsDataURL(file);
+    }
+    document.getElementById('matchAnalyzeContainer').style.display = 'block';
 }
 
 function resetMatchForm() {
@@ -871,8 +885,8 @@ function resetMatchForm() {
         zone.innerHTML = `
             <div class="upload-icon">📄</div>
             <div class="upload-text" id="matchUploadText">
-                <strong>Tap to photograph form</strong><br>
-                Take a photo of your material request form
+                <strong>Tap to upload form</strong><br>
+                Photo, PDF, Excel, CSV, or Word file
             </div>
         `;
     } else {
@@ -880,7 +894,7 @@ function resetMatchForm() {
             <div class="upload-icon">📄</div>
             <div class="upload-text" id="matchUploadText">
                 <strong>Upload material request form</strong><br>
-                Take a photo or upload an image of the form
+                Photo, PDF, Excel, CSV, or Word file
             </div>
         `;
     }

@@ -192,12 +192,22 @@ Each entry shows the part number, quantity change, remaining quantity, and when 
 
 ## � Match Request Tab (Material Request Analyzer)
 
-This is the key feature for PMs and warehouse managers. Upload a photo of a material request form and Brett will tell you what's already in the warehouse — so you can pull parts before ordering.
+This is the key feature for PMs and warehouse managers. Upload a material request form and Brett will tell you what's already in the warehouse — so you can pull parts before ordering.
+
+### Supported File Types
+
+| Format | How It's Processed |
+|--------|--------------------|
+| **Photos** (JPG, PNG, WebP) | Gemini AI reads the image directly |
+| **PDF** | Gemini AI reads PDF documents natively |
+| **Excel** (.xlsx, .xls) | Parsed and sent to Gemini AI for analysis |
+| **CSV** | Parsed and sent to Gemini AI for analysis |
+| **Word** (.docx) | Text extracted and sent to Gemini AI |
 
 ### How to Use
 
 1. Tap the **📄 Match Request** tab
-2. **Upload or photograph** a material request form (bill of materials, parts list, purchase order, etc.)
+2. **Upload your material request form** — photo, PDF, Excel, CSV, or Word file
 3. Tap **🔍 Analyze & Match Parts**
 4. Wait for Gemini AI to read the form (usually 5-15 seconds)
 5. View results in two panels:

@@ -289,10 +289,11 @@
                         <div class="upload-icon">📄</div>
                         <div class="upload-text" id="matchUploadText">
                             <strong>Upload material request form</strong><br>
-                            Take a photo or upload an image of the form
+                            Photo, PDF, Excel, CSV, or Word file
                         </div>
                     </div>
-                    <input type="file" id="matchFileInput" accept="image/*" capture="environment"
+                    <input type="file" id="matchFileInput"
+                        accept="image/*,.pdf,.xlsx,.xls,.csv,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         onchange="handleMatchFileSelect(event)" style="display:none">
 
                     <!-- Analyze Button -->
